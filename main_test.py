@@ -6,7 +6,6 @@ from util.logger import Logger
 from DeepMimic import update_world, update_timestep, build_world
 import util.mpi_util as MPIUtil
 
-
 class Optimizer:
     def __init__(self) -> None:
         args = sys.argv[1:]
