@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 from abc import abstractmethod
+import zipfile, json, io
+from collections import OrderedDict
 
 from learning.rl_agent import RLAgent
 from util.logger import Logger
@@ -38,6 +40,44 @@ class TFAgent(RLAgent):
             self.saver.restore(self.sess, in_path)
             self._load_normalizers()
             Logger.print('Model loaded from: ' + in_path)
+            # vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.tf_scope)
+            # paramval = self.sess.run(vars)
+            # namelist = ['agent/main/actor/0/dense/kernel:0', 'agent/main/actor/0/dense/bias:0',\
+            #             'agent/main/actor/1/dense/kernel:0', 'agent/main/actor/1/dense/bias:0',\
+            #             'agent/main/actor/dist_gauss_diag/mean/kernel:0', 'agent/main/actor/dist_gauss_diag/mean/bias:0',\
+            #             'agent/main/actor/dist_gauss_diag/logstd/bias:0']
+            # paramdict = OrderedDict()
+            # for param, value in zip(vars, paramval):
+            #     if param.name == namelist[0]:
+            #         paramdict["model/pi/fc0/kernel:0"] = value
+            #     elif param.name == namelist[1]:
+            #         paramdict["model/pi/fc0/bias:0"] = value
+            #     elif param.name == namelist[2]:
+            #         paramdict["model/pi/fc1/kernel:0"] = value
+            #     elif param.name == namelist[3]:
+            #         paramdict["model/pi/fc1/bias:0"] = value
+            #     elif param.name == namelist[4]:
+            #         paramdict["model/pi/dense/kernel:0"] = value
+            #     elif param.name == namelist[5]:
+            #         paramdict["model/pi/dense/bias:0"] = value
+            #     elif param.name == namelist[6]:
+            #         paramdict["model/pi/dense_1/bias:0"] = value
+            #     else:
+            #         paramdict[param.name] = value
+            # # paramdict = OrderedDict((param.name, value) for param, value in zip(vars, paramval))
+            # print(paramdict)
+            # byte_file = io.BytesIO()
+            # np.savez(byte_file, **paramdict)
+            # serialized_params = byte_file.getvalue()
+            # serialized_param_list = json.dumps(
+            #     list(paramdict.keys()),
+            #     indent=4
+            # )
+            # print(serialized_param_list)
+            # with zipfile.ZipFile("data/policies/benchmark/param_run.zip", "w") as file_:
+            #     file_.writestr("parameters", serialized_params)
+            #     file_.writestr("parameter_list", serialized_param_list)
+            # quit()
         return
 
     def _get_output_path(self):

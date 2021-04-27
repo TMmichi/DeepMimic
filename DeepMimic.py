@@ -180,7 +180,7 @@ def animate(callback_val):
         if (np.isfinite(update_count)):
             updates_per_sec = counter_decay * updates_per_sec + (1 - counter_decay) * update_count;
             world.env.set_updates_per_sec(updates_per_sec);
-            
+        
         timer_step = calc_display_anim_time(num_steps)
         update_dur = get_curr_time() - curr_time
         timer_step -= update_dur
