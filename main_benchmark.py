@@ -252,6 +252,11 @@ class BenchMark:
                 params = np.load(byte_file)
                 for param_name in parameter_list:
                     param_dict[param_name] = params[param_name]
+                    # if 's_norm' in param_name.split("/"):
+                    #     print(param_name)
+                    #     print(params[param_name])
+                    # if 'dense_1' in param_name.split('/'):
+                    #     print(params[param_name])
         
         model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'policy_kwargs': policy_kwargs, \
                         'verbose': 1, 'learning_starts':100, 'ent_coef':1e-7}
