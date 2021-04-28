@@ -2,11 +2,15 @@ BIN=Main
 OBJ_DIR = objs
 MKDIR = mkdir -p
 
-EIGEN_DIR = /home/mlcs/Documents/eigen-3.3.8
-BULLET_INC_DIR = /home/mlcs/Documents/bullet3-2.88/src
+#EIGEN_DIR = /home/mlcs/Documents/eigen-3.3.8
+#BULLET_INC_DIR = /home/mlcs/Documents/bullet3-2.88/src
+#PYTHON_INC = /home/mlcs/anaconda3/envs/thesis/include/python3.6m
+#PYTHON_LIB = /home/mlcs/anaconda3/envs/thesis/bin/ -lpython3.6m
 
-PYTHON_INC = /home/mlcs/anaconda3/envs/thesis/include/python3.6m
-PYTHON_LIB = /home/mlcs/anaconda3/envs/thesis/bin/ -lpython3.6m
+EIGEN_DIR = ../libraries/eigen-3.3.7
+BULLET_INC_DIR = ../libraries/bullet3-2.88/src
+PYTHON_INC = /home/ljh/anaconda3/envs/mujaco/include/python3.6m
+PYTHON_LIB = /home/ljh/anaconda3/envs/mujaco/bin/ -lpython3.6m
 
 INC = -I./ \
 	-I$(EIGEN_DIR) \
