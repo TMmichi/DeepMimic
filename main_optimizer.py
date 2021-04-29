@@ -16,7 +16,7 @@ from stable_baselines.sac_multi import SAC_MULTI
 from stable_baselines.sac_multi.policies import MlpPolicy as MlpPolicy_hpcsac
 
 def _lr_scheduler(frac):
-    return 7e-5 * frac
+    return 5e-6 * frac
 
 def build_arg_parser(args):
     arg_parser = ArgParser()
@@ -34,28 +34,26 @@ class Optimizer:
         args = sys.argv[1:]
         print('args in main_test: ', args)
         self.arg_parser = build_arg_parser(args)
+
+        trial = 8
+        # self.sess_SRL = tf_util.single_threaded_session()
         package_path = str(Path(__file__).resolve().parent)
         self.model_path = package_path+"/data/policies/"
-        self.model_dir = self.model_path + 'benchmark'
-        # self.policy_dir = self.model_dir + '/parameter_walk.zip'
-        self.policy_dir = self.model_dir + '/param_walk.zip'
+        self.model_dir = self.model_path + 'benchmark/'
+        self.save_dir = self.model_dir + 'HPC_jogging' + str(trial)
+        os.makedirs(self.save_dir, exist_ok=True)
         print("\033[92m"+self.model_dir+"\033[0m")
 
-        # self.sess_SRL = tf_util.single_threaded_session()
-        self.env = DeepMimicGymEnv(args)
-        # self.world = RLWorld(self.coreEnv, self.arg_parser) # TODO: remove.
-        self.world = self.create_model()
+        self.env = DeepMimicGymEnv(args, enable_draw=False)
+        self.world = self.create_model_HPC()
         fps = 60
         self.update_timestep = 1.0 / fps
         
     
     def run(self):
-        self.trainer.learn(10000000, save_interval=10000, save_path=self.model_dir)
+        self.world.learn(10000000, save_interval=10000, save_path=self.save_dir)
         print("Train Finished")
-        self.trainer.save(self.model_dir)
-        # done = False
-        # while not done:
-        #     self.update(self.update_timestep)
+        self.world.save(self.save_dir)
 
     def shutdown(self):
         Logger.print('Shutting down...')
@@ -68,14 +66,12 @@ class Optimizer:
     def create_model(self):
         obs_size = self.env.coreEnv.get_state_size(0)
         obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
-        print(obs_index)
-        # goal_size = self.env.coreEnv.get_goal_size(0)
-        # print("goal size: ", goal_size)
         net_arch = {'pi': [1024,512], 'vf': [1024,512]}
         policy_kwargs = {'net_arch': [net_arch], 'obs_index':obs_index}
 
         param_dict = OrderedDict()
-        with zipfile.ZipFile(self.policy_dir, 'r') as file_:
+        policy_dir = self.model_dir + 'param_walk.zip'
+        with zipfile.ZipFile(policy_dir, 'r') as file_:
             namelist = file_.namelist()
             if 'parameters' in namelist:
                 parameter_list_json = file_.read("parameter_list").decode()
@@ -84,35 +80,54 @@ class Optimizer:
                 byte_file = io.BytesIO(serialized_params)
                 params = np.load(byte_file)
                 for param_name in parameter_list:
+                    print(param_name)
                     param_dict[param_name] = params[param_name]
-        for name in param_dict.keys():
-            print(name)
-            if name == 'agent/resource/s_norm/mean:0':
-                print(param_dict[name].shape)
         
         model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'policy_kwargs': policy_kwargs, \
                         'verbose': 1, 'learning_rate':_lr_scheduler, 'learning_starts':100, 'ent_coef':1e-7}
-        self.trainer = SAC_MULTI(MlpPolicy_hpcsac, self.env, benchmark=False, **model_dict)
-        self.trainer.load_parameters(param_dict, exact_match=False)
+        trainer = SAC_MULTI(MlpPolicy_hpcsac, self.env, benchmark=False, **model_dict)
+        trainer.load_parameters(param_dict, exact_match=False)
+        return trainer
+    
+    def create_model_HPC(self):
+        seed = 1
+        policy = MlpPolicy_hpcsac
+        trainer = SAC_MULTI(policy=policy, env=None, _init_setup_model=False, composite_primitive_name='jogging')
 
-         
-    def update(self, time_elapsed):
-        num_substeps = self.env.coreEnv.get_num_update_substeps()
-        timestep = time_elapsed / num_substeps
-        num_substeps = 1 if (time_elapsed == 0) else num_substeps
+        obs_size = self.env.coreEnv.get_state_size(0)
+        obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
+        act_size = self.env.coreEnv.get_action_size(0)
+        act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
 
-        for i in range(num_substeps):
-            self.world.update(timestep)
-
-            valid_episode = self.env.coreEnv.check_valid_episode()
-            if valid_episode:
-                end_episode = self.env.coreEnv.is_episode_end()
-                if end_episode:
-                    self.world.end_episode()
-                    self.world.reset()
-                    break
-            else:
-                self.world.reset()
+        prim_name = 'walking'
+        policy_zip_path = self.model_dir+'walk_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        prim_name = 'running'
+        policy_zip_path = self.model_dir+'run_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        number_of_primitives = 2
+        trainer.construct_primitive_info(name='weight', freeze=False, level=1,
+                                        obs_range=0, obs_index=obs_index,
+                                        act_range=0, act_index=list(range(number_of_primitives)), act_scale=None,
+                                        obs_relativity={},
+                                        layer_structure={'policy':[256, 256, 256],'value':[256, 256, 256]},
+                                        subgoal={})
+        model_dict = {'gamma': 0.99, 'tensorboard_log': self.save_dir, 'verbose': 1, 'seed': seed, \
+            'learning_rate':_lr_scheduler, 'learning_starts':10000, 'ent_coef': 1e-7, 'batch_size': 8, 'noptepochs': 4, 'n_steps': 128}
+        trainer.pretrainer_load(model=trainer, policy=policy, env=self.env, **model_dict)
+        return trainer
 
 
 if __name__ == '__main__':

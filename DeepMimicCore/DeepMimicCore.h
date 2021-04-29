@@ -55,6 +55,9 @@ public:
 	virtual int GetActionSize(int agent_id) const;
 	virtual int GetNumActions(int agent_id) const; // for discrete actions
 
+	virtual double GetRootPoseZ(int agent_id) const;
+	virtual double GetRootVelX(int agent_id) const;
+
 	virtual std::vector<double> BuildStateOffset(int agent_id) const;
 	virtual std::vector<double> BuildStateScale(int agent_id) const;
 	virtual std::vector<double> BuildGoalOffset(int agent_id) const;

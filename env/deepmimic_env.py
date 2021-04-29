@@ -130,7 +130,14 @@ class DeepMimicEnv(Env):
         return np.array(self._core.BuildGoalNormGroups(agent_id))
 
     def calc_reward(self, agent_id):
-        return self._core.CalcReward(agent_id)
+        rew = self._core.CalcReward(agent_id)
+        return rew
+    
+    # def get_pose(self, agent_id):
+    #     return self._core.GetRootPoseZ(agent_id)
+
+    # def get_vel(self, agent_id):
+    #     return self._core.GetRootVelX(agent_id)
 
     def get_reward_min(self, agent_id):
         return self._core.GetRewardMin(agent_id)

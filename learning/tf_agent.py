@@ -45,7 +45,11 @@ class TFAgent(RLAgent):
             # namelist = ['agent/main/actor/0/dense/kernel:0', 'agent/main/actor/0/dense/bias:0',\
             #             'agent/main/actor/1/dense/kernel:0', 'agent/main/actor/1/dense/bias:0',\
             #             'agent/main/actor/dist_gauss_diag/mean/kernel:0', 'agent/main/actor/dist_gauss_diag/mean/bias:0',\
-            #             'agent/main/actor/dist_gauss_diag/logstd/bias:0']
+            #             'agent/main/actor/dist_gauss_diag/logstd/bias:0',
+            #             'agent/resource/s_norm/mean:0',
+            #             'agent/resource/s_norm/std:0',
+            #             'agent/resource/a_norm/mean:0',
+            #             'agent/resource/a_norm/std:0',]
             # paramdict = OrderedDict()
             # for param, value in zip(vars, paramval):
             #     if param.name == namelist[0]:
@@ -62,6 +66,14 @@ class TFAgent(RLAgent):
             #         paramdict["model/pi/dense/bias:0"] = value
             #     elif param.name == namelist[6]:
             #         paramdict["model/pi/dense_1/bias:0"] = value
+            #     elif param.name == namelist[7]:
+            #         paramdict["model/pi/s_norm/mean:0"] = value
+            #     elif param.name == namelist[8]:
+            #         paramdict["model/pi/s_norm/std:0"] = value
+            #     elif param.name == namelist[9]:
+            #         paramdict["model/pi/a_norm/mean:0"] = value
+            #     elif param.name == namelist[10]:
+            #         paramdict["model/pi/a_norm/std:0"] = value
             #     else:
             #         paramdict[param.name] = value
             # # paramdict = OrderedDict((param.name, value) for param, value in zip(vars, paramval))
@@ -74,7 +86,7 @@ class TFAgent(RLAgent):
             #     indent=4
             # )
             # print(serialized_param_list)
-            # with zipfile.ZipFile("data/policies/benchmark/param_run.zip", "w") as file_:
+            # with zipfile.ZipFile("data/policies/benchmark/mimic_walk.zip", "w") as file_:
             #     file_.writestr("parameters", serialized_params)
             #     file_.writestr("parameter_list", serialized_param_list)
             # quit()

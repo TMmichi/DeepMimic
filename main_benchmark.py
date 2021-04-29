@@ -52,9 +52,8 @@ class BenchMark:
         # self.sess_SRL = tf_util.single_threaded_session()
         package_path = str(Path(__file__).resolve().parent)
         self.model_path = package_path+"/data/policies/"
-        self.model_dir = self.model_path + 'benchmark'
-        # self.policy_dir = self.model_dir + '/parameter_walk.zip'
-        self.policy_dir = self.model_dir + '/param_walk.zip'
+        self.model_dir = self.model_path + 'benchmark/'
+        self.policy_dir = self.model_dir + 'mimic_run.zip'
         print("\033[92m"+self.model_dir+"\033[0m")
 
         self._init_env()
@@ -73,11 +72,11 @@ class BenchMark:
     
     def _reload(self):
         self.arg_parser = build_arg_parser(self.args)
-        # self.coreEnv = DeepMimicEnv(args, True)
         self.env = DeepMimicGymEnv(self.args, enable_draw=True)
         self.env.coreEnv.set_playback_speed(self.playback_speed)
-        # self.world = RLWorld(self.coreEnv, self.arg_parser) # TODO: remove.
-        self.world = self.create_model()
+        # self.world = self.create_model()
+        # self.world = self.create_model_HPC()
+        self.world = self.load_test_model()
 
     def _setup_draw(self):
         glutDisplayFunc(self._draw)
@@ -98,7 +97,7 @@ class BenchMark:
     def _update_intermediate_buffer(self):
         if not self.reshaping:
             if self.win_width is not self.env.coreEnv.get_win_width() or self.win_height is not self.env.coreEnv.get_win_height():
-                self.env.coreEnv.reshape(self.win_height, self.win_height)
+                self.env.coreEnv.reshape(self.win_width, self.win_height)
     
     def _reshape(self, w, h):
         self.reshaping = True
@@ -123,7 +122,7 @@ class BenchMark:
         elif (key == b'/'):
             self._change_playback_speed(-self.playback_speed + 1)
         elif (key == b'r'):
-            self.reset()
+            self._reload()
         elif (key == b't'):
             self._toggle_training()
 
@@ -182,23 +181,26 @@ class BenchMark:
         num_substeps = self.env.coreEnv.get_num_update_substeps()
         timestep = time_elapsed / num_substeps
         num_substeps = 1 if (time_elapsed == 0) else num_substeps
-
+        done = False
         for i in range(num_substeps):
             if self.env.need_new_action():
                 state = self.env.get_state()
                 goal = self.env.get_goal()
-                rew = self.env.get_reward()
-                action = self.world.predict(state)[0]
-                self.env.step(action)
+                # action = self.world.predict(state)[0]
+                action, _, weight = self.world.predict_subgoal(state)
+                print(weight)
+                self.env.set_action(action)
+            rew = self.env.get_reward()
             self.env.update(timestep)
             
             valid_episode = self.env.coreEnv.check_valid_episode()
             if valid_episode:
                 end_episode = self.env.coreEnv.is_episode_end()
-                if (end_episode):                    
-                    _ = self.env.reset()
-                    break
+                if (end_episode):
+                    done = True
             else:
+                done = True
+            if done:
                 self.env.reset()
                 break
     
@@ -251,18 +253,75 @@ class BenchMark:
                 byte_file = io.BytesIO(serialized_params)
                 params = np.load(byte_file)
                 for param_name in parameter_list:
+                    print(param_name)
                     param_dict[param_name] = params[param_name]
-                    # if 's_norm' in param_name.split("/"):
-                    #     print(param_name)
-                    #     print(params[param_name])
-                    # if 'dense_1' in param_name.split('/'):
-                    #     print(params[param_name])
         
         model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'policy_kwargs': policy_kwargs, \
                         'verbose': 1, 'learning_starts':100, 'ent_coef':1e-7}
         trainer = SAC_MULTI(MlpPolicy_hpcsac, self.env, benchmark=False, **model_dict)
         trainer.load_parameters(param_dict, exact_match=False)
         return trainer
+    
+    def create_model_HPC(self):
+        seed = 1
+        policy = MlpPolicy_hpcsac
+        trainer = SAC_MULTI(policy=policy, env=None, _init_setup_model=False, composite_primitive_name='jogging')
+
+        obs_size = self.env.coreEnv.get_state_size(0)
+        obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
+        act_size = self.env.coreEnv.get_action_size(0)
+        act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
+
+        prim_name = 'walking'
+        policy_zip_path = self.model_dir+'walk_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        prim_name = 'running'
+        policy_zip_path = self.model_dir+'run_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        number_of_primitives = 2
+        trainer.construct_primitive_info(name='weight', freeze=False, level=1,
+                                        obs_range=0, obs_index=obs_index,
+                                        act_range=0, act_index=list(range(number_of_primitives)), act_scale=None,
+                                        obs_relativity={},
+                                        layer_structure={'policy':[1024, 512],'value':[1024, 512]},
+                                        subgoal={})
+        model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'verbose': 1, 'seed': seed, \
+            'learning_starts':50000, 'ent_coef': 1e-7, 'batch_size': 8, 'noptepochs': 4, 'n_steps': 128}
+        trainer.pretrainer_load(model=trainer, policy=policy, env=self.env, **model_dict)
+        return trainer
+    
+    def load_test_model(self):
+        obs_size = self.env.coreEnv.get_state_size(0)
+        obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
+        act_size = self.env.coreEnv.get_action_size(0)
+        act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
+        
+        model = SAC_MULTI(policy=MlpPolicy_hpcsac, env=None, _init_setup_model=False, composite_primitive_name='jogging')
+        policy_zip_path = self.model_dir+'HPC_jogging'+str(1)+'/policy_30000.zip'
+        model.construct_primitive_info(name=None, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index,
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=True)
+        SAC_MULTI.pretrainer_load(model, MlpPolicy_hpcsac, self.env)
+        return model
+    
+    def save_model(self):
+        self.world.save(self.model_dir+"/run_primitive")
     
     def main_loop(self):
         self._init_time()
@@ -272,4 +331,5 @@ class BenchMark:
 if __name__ == '__main__':
     args = sys.argv[1:]
     bm = BenchMark(args)
+    # bm.save_model()
     bm.main_loop()

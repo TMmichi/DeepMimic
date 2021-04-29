@@ -3,6 +3,7 @@
 #include "sim/CtController.h"
 #include "util/FileUtil.h"
 #include "util/JsonUtil.h"
+#include <iostream>
 
 double cSceneImitate::CalcRewardImitate(const cSimCharacter& sim_char, const cKinCharacter& kin_char) const
 {
@@ -122,9 +123,51 @@ double cSceneImitate::CalcRewardImitate(const cSimCharacter& sim_char, const cKi
 
 	reward = pose_w * pose_reward + vel_w * vel_reward + end_eff_w * end_eff_reward
 		+ root_w * root_reward + com_w * com_reward;
-
+	
+	
+	if ((root_vel0[0] < 2.8) && (root_vel0[0] > 2.4))
+	{
+		reward = 1/(abs(root_vel0[0] - 2.8)+0.05)-2;
+	}else{
+		reward = 0;
+	}
+	if (root_pos0[1] < 0.5){
+		reward -= 1000;
+	}
+	
 	return reward;
+	// return root_vel0[0];
 }
+
+// double cSceneImitate::GetRootPoseZ(int agent_id) const
+// {
+// 	const cSimCharacter* sim_char = GetAgentChar(agent_id);
+// 	double pos = 0;
+// 	pos = GetRootPoseZ_pro(*sim_char);
+// 	return pos;
+// }
+
+// double cSceneImitate::GetRootVelX(int agent_id) const
+// {
+// 	const cSimCharacter* sim_char = GetAgentChar(agent_id);
+// 	double vel = 0;
+// 	vel = GetRootVelX_pro(*sim_char);
+// 	return vel;
+// }
+
+// double cSceneImitate::GetRootPoseZ_pro(const cSimCharacter& sim_char) const
+// {
+// 	const Eigen::VectorXd& pose0 = sim_char.GetPose();
+// 	tVector root_pos0 = cKinTree::GetRootPos(pose0);
+// 	return root_pos0[1];
+// }
+
+// double cSceneImitate::GetRootVelX_pro(const cSimCharacter& sim_char) const
+// {
+// 	const Eigen::VectorXd& vel0 = sim_char.GetVel();
+// 	tVector root_vel0 = cKinTree::GetRootVel(vel0);
+// 	return root_vel0[0];
+// }
 
 cSceneImitate::cSceneImitate()
 {
