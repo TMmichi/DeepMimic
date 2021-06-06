@@ -419,7 +419,7 @@ class BenchMark:
         act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
         
         model = SAC_MULTI(policy=MlpPolicy_hpcsac, env=None, _init_setup_model=False, composite_primitive_name='jogging')
-        policy_zip_path = self.model_dir+'HPC_jog_amp1/id_140115607495600/policy_60000.zip'
+        policy_zip_path = self.model_dir+'HPC_jog_amp1/id_139692678808496/policy_1100000.zip'
         model.construct_primitive_info(name=None, freeze=True, level=1,
                                         obs_range=None, obs_index=obs_index,
                                         act_range=None, act_index=act_index, act_scale=1,
