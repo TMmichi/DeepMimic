@@ -41,8 +41,8 @@ public:
 	virtual double GetRewardMin(int agent_id) const;
 	virtual double GetRewardMax(int agent_id) const;
 
-	// virtual double GetRootPoseZ(int agent_id) const;
-	// virtual double GetRootVelX(int agent_id) const;
+	virtual double GetRootPoseZ(int agent_id) const;
+	virtual double GetRootVelX(int agent_id) const;
 
 	virtual bool EnableAMPTaskReward() const;
 	virtual int GetAMPObsSize() const;

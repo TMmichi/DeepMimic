@@ -294,8 +294,8 @@ double cDeepMimicCore::GetRootPoseZ(int agent_id) const
 	const auto& rl_scene = GetRLScene();
 	if (rl_scene != nullptr)
 	{
-		// return rl_scene->GetRootPoseZ(agent_id);
-		return 0;
+		return rl_scene->GetRootPoseZ(agent_id);
+		// return 0;
 	}
 	return 0;
 }
@@ -305,8 +305,8 @@ double cDeepMimicCore::GetRootVelX(int agent_id) const
 	const auto& rl_scene = GetRLScene();
 	if (rl_scene != nullptr)
 	{
-		// return rl_scene->GetRootVelX(agent_id);
-		return 0;
+		return rl_scene->GetRootVelX(agent_id);
+		// return 0;
 	}
 	return 0;
 }

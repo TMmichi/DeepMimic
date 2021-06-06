@@ -119,6 +119,16 @@ double cDrawRLScene::GetRewardSucc(int agent_id)
 	return GetRLScene()->GetRewardSucc(agent_id);
 }
 
+double cDrawRLScene::GetRootPoseZ(int agent_id) const
+{
+	return GetRLScene()->GetRootPoseZ(agent_id);
+}
+
+double cDrawRLScene::GetRootVelX(int agent_id) const
+{
+	return GetRLScene()->GetRootVelX(agent_id);
+}
+
 bool cDrawRLScene::IsEpisodeEnd() const
 {
 	return GetRLScene()->IsEpisodeEnd();

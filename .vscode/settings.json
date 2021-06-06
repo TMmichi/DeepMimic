@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": "/home/ljh/anaconda3/envs/mujaco/bin/python",
+    "files.associations": {
+        "fstream": "cpp"
+    }
+}

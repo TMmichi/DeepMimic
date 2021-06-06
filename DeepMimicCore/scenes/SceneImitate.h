@@ -22,8 +22,8 @@ public:
 	virtual double CalcReward(int agent_id) const;
 	virtual eTerminate CheckTerminate(int agent_id) const;
 
-	// virtual double GetRootPoseZ(int agent_id) const;
-	// virtual double GetRootVelX(int agent_id) const;
+	virtual double GetRootPoseZ(int agent_id) const;
+	virtual double GetRootVelX(int agent_id) const;
 
 	virtual std::string GetName() const;
 
@@ -69,6 +69,6 @@ protected:
 	virtual double CalcRandKinResetTime();
 	virtual double CalcRewardImitate(const cSimCharacter& sim_char, const cKinCharacter& ref_char) const;
 
-	// virtual double GetRootPoseZ_pro(const cSimCharacter& sim_char) const;
-	// virtual double GetRootVelX_pro(const cSimCharacter& sim_char) const;
+	virtual double GetRootPoseZ_pro(const cSimCharacter& sim_char) const;
+	virtual double GetRootVelX_pro(const cSimCharacter& sim_char) const;
 };

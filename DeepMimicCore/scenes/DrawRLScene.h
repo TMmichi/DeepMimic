@@ -36,6 +36,9 @@ public:
 	virtual double GetRewardFail(int agent_id);
 	virtual double GetRewardSucc(int agent_id);
 
+	virtual double GetRootPoseZ(int agent_id) const;
+	virtual double GetRootVelX(int agent_id) const;
+
 	virtual bool IsEpisodeEnd() const;
 	virtual eTerminate CheckTerminate(int agent_id) const;
 	virtual bool CheckValidEpisode() const;

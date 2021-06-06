@@ -149,6 +149,16 @@ double cRLSceneSimChar::GetRewardMax(int agent_id) const
 	return mAgentReg.GetAgent(agent_id)->GetRewardMax();
 }
 
+double cRLSceneSimChar::GetRootPoseZ(int agent_id) const
+{
+	return 0;
+}
+
+double cRLSceneSimChar::GetRootVelX(int agent_id) const
+{
+	return 0;
+}
+
 bool cRLSceneSimChar::EnableAMPTaskReward() const
 {
 	return false;

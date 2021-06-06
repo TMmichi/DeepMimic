@@ -63,3 +63,13 @@ void cRLScene::SetMode(eMode mode)
 {
 	mMode = mode;
 }
+
+double cRLScene::GetRootPoseZ(int agent_id) const
+{
+	return 0;
+}
+
+double cRLScene::GetRootVelX(int agent_id) const
+{
+	return 0;
+}

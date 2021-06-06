@@ -39,6 +39,8 @@ class BenchMark:
         self.reshaping = False
 
         # anim
+        self.step = 0
+        self.total_rew = 0
         fps = 60
         self.update_timestep = 1.0 / fps
         self.display_anim_time = int(1000 * self.update_timestep)
@@ -53,7 +55,8 @@ class BenchMark:
         package_path = str(Path(__file__).resolve().parent)
         self.model_path = package_path+"/data/policies/"
         self.model_dir = self.model_path + 'benchmark/'
-        self.policy_dir = self.model_dir + 'mimic_run.zip'
+        self.primname = 'roll'
+        self.policy_dir = self.model_dir + 'amp_'+self.primname+'.zip'
         print("\033[92m"+self.model_dir+"\033[0m")
 
         self._init_env()
@@ -74,8 +77,10 @@ class BenchMark:
         self.arg_parser = build_arg_parser(self.args)
         self.env = DeepMimicGymEnv(self.args, enable_draw=True)
         self.env.coreEnv.set_playback_speed(self.playback_speed)
-        # self.world = self.create_model()
+        #self.world = self.create_model()
         # self.world = self.create_model_HPC()
+        # self.world = self.create_model_HPC2()
+        # self.world = self.create_model_HPC_dog()
         self.world = self.load_test_model()
 
     def _setup_draw(self):
@@ -183,14 +188,30 @@ class BenchMark:
         num_substeps = 1 if (time_elapsed == 0) else num_substeps
         done = False
         for i in range(num_substeps):
+            rew = 0
+            weight = 0
             if self.env.need_new_action():
+                self.step += 1
                 state = self.env.get_state()
                 goal = self.env.get_goal()
-                # action = self.world.predict(state)[0]
+                rew = self.env.get_custom_reward()
+                # action, _ = self.world.predict(state)
                 action, _, weight = self.world.predict_subgoal(state)
-                print(weight)
+                # idx_walk = 1
+                # idx_run = 1-idx_walk
+                # if self.step < 50:
+                #     idx_up = 1
+                #     idx_walk = 0
+                # else:
+                #     idx_up = 0
+                #     idx_walk = 1
+                # action, weight = self.world.predict_biased(state, index=[idx_walk,idx_run])
+                # print(self.env.coreEnv.get_vel(0))
+                # action, weight = self.world.predict_biased(state, index=[0.05,0.95])
+                # action, weight = self.world.predict_biased(state, index=[0.5,0.5])
+                # print("{0: 10.4f}".format(rew), "Walking: {0: 1.5f}, Running:{1: 1.5f}".format(weight['level1_jogging/weight'][0][0], weight['level1_jogging/weight'][0][1]))
+                # print("{0: 10.4f}".format(rew), "Walk: {0: 1.5f}, Run:{1: 1.5f}".format(weight['level1_rollup/weight'][0][0], weight['level1_rollup/weight'][0][1]))
                 self.env.set_action(action)
-            rew = self.env.get_reward()
             self.env.update(timestep)
             
             valid_episode = self.env.coreEnv.check_valid_episode()
@@ -198,9 +219,20 @@ class BenchMark:
                 end_episode = self.env.coreEnv.is_episode_end()
                 if (end_episode):
                     done = True
+                    rew += -500
             else:
                 done = True
+                rew += -500
+            if type(weight) == dict or rew < -400:
+                print('step: {0:3d}, rew: {1:3.3f}, weight: '.format(self.step, rew), weight)
+            if self.step >= 500:
+                done = True
+            self.total_rew += rew
             if done:
+                print('step: {0:3d}, rew: {1:3.3f}, weight: '.format(self.step, rew), weight)
+                print('Total rew: ',self.total_rew)
+                self.step = 0
+                self.total_rew = 0
                 self.env.reset()
                 break
     
@@ -238,8 +270,6 @@ class BenchMark:
     def create_model(self):
         obs_size = self.env.coreEnv.get_state_size(0)
         obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
-        # goal_size = self.env.coreEnv.get_goal_size(0)
-        # print("goal size: ", goal_size)
         net_arch = {'pi': [1024,512], 'vf': [1024,512]}
         policy_kwargs = {'net_arch': [net_arch], 'obs_index':obs_index}
 
@@ -302,6 +332,86 @@ class BenchMark:
         trainer.pretrainer_load(model=trainer, policy=policy, env=self.env, **model_dict)
         return trainer
     
+    def create_model_HPC2(self):
+        seed = 1
+        policy = MlpPolicy_hpcsac
+        trainer = SAC_MULTI(policy=policy, env=None, _init_setup_model=False, composite_primitive_name='rollup')
+
+        obs_size = self.env.coreEnv.get_state_size(0)
+        obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
+        act_size = self.env.coreEnv.get_action_size(0)
+        act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
+
+        prim_name = 'walk'
+        policy_zip_path = self.model_dir+prim_name+'_amp_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        prim_name = 'run'
+        policy_zip_path = self.model_dir+prim_name+'_amp_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        number_of_primitives = 2
+        trainer.construct_primitive_info(name='weight', freeze=False, level=1,
+                                        obs_range=0, obs_index=obs_index,
+                                        act_range=0, act_index=list(range(number_of_primitives)), act_scale=None,
+                                        obs_relativity={},
+                                        layer_structure={'policy':[1024, 512],'value':[1024, 512]},
+                                        subgoal={})
+        model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'verbose': 1, 'seed': seed, \
+            'learning_starts':50000, 'ent_coef': 1e-7, 'batch_size': 8, 'noptepochs': 4, 'n_steps': 128}
+        trainer.pretrainer_load(model=trainer, policy=policy, env=self.env, **model_dict)
+        return trainer
+    
+    def create_model_HPC_dog(self):
+        seed = 1
+        policy = MlpPolicy_hpcsac
+        trainer = SAC_MULTI(policy=policy, env=None, _init_setup_model=False, composite_primitive_name='jogging')
+
+        obs_size = self.env.coreEnv.get_state_size(0)
+        obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
+        act_size = self.env.coreEnv.get_action_size(0)
+        act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
+
+        prim_name = 'walking'
+        policy_zip_path = self.model_dir+'dog_walk_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        prim_name = 'running'
+        policy_zip_path = self.model_dir+'dog_run_primitive.zip'
+        trainer.construct_primitive_info(name=prim_name, freeze=True, level=1,
+                                        obs_range=None, obs_index=obs_index, 
+                                        act_range=None, act_index=act_index, act_scale=1,
+                                        obs_relativity={},
+                                        layer_structure=None,
+                                        loaded_policy=SAC_MULTI._load_from_file(policy_zip_path), 
+                                        load_value=False)
+        number_of_primitives = 2
+        trainer.construct_primitive_info(name='weight', freeze=False, level=1,
+                                        obs_range=0, obs_index=obs_index,
+                                        act_range=0, act_index=list(range(number_of_primitives)), act_scale=None,
+                                        obs_relativity={},
+                                        layer_structure={'policy':[1024, 512],'value':[1024, 512]},
+                                        subgoal={})
+        model_dict = {'gamma': 0.99, 'tensorboard_log': self.model_dir, 'verbose': 1, 'seed': seed, \
+            'learning_starts':50000, 'ent_coef': 1e-7, 'batch_size': 8, 'noptepochs': 4, 'n_steps': 128}
+        trainer.pretrainer_load(model=trainer, policy=policy, env=self.env, **model_dict)
+        return trainer
+    
     def load_test_model(self):
         obs_size = self.env.coreEnv.get_state_size(0)
         obs_index = list(np.linspace(0,obs_size-1,obs_size,dtype=np.int32))
@@ -309,7 +419,7 @@ class BenchMark:
         act_index = list(np.linspace(0,act_size-1,act_size,dtype=np.int32))
         
         model = SAC_MULTI(policy=MlpPolicy_hpcsac, env=None, _init_setup_model=False, composite_primitive_name='jogging')
-        policy_zip_path = self.model_dir+'HPC_jogging'+str(1)+'/policy_30000.zip'
+        policy_zip_path = self.model_dir+'HPC_jog_amp1/id_140115607495600/policy_60000.zip'
         model.construct_primitive_info(name=None, freeze=True, level=1,
                                         obs_range=None, obs_index=obs_index,
                                         act_range=None, act_index=act_index, act_scale=1,
@@ -321,7 +431,7 @@ class BenchMark:
         return model
     
     def save_model(self):
-        self.world.save(self.model_dir+"/run_primitive")
+        self.world.save(self.model_dir+"/"+self.primname+"_amp_primitive")
     
     def main_loop(self):
         self._init_time()
@@ -331,5 +441,5 @@ class BenchMark:
 if __name__ == '__main__':
     args = sys.argv[1:]
     bm = BenchMark(args)
-    # bm.save_model()
+    #bm.save_model()
     bm.main_loop()

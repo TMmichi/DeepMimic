@@ -139,36 +139,6 @@ double cSceneImitate::CalcRewardImitate(const cSimCharacter& sim_char, const cKi
 	// return root_vel0[0];
 }
 
-// double cSceneImitate::GetRootPoseZ(int agent_id) const
-// {
-// 	const cSimCharacter* sim_char = GetAgentChar(agent_id);
-// 	double pos = 0;
-// 	pos = GetRootPoseZ_pro(*sim_char);
-// 	return pos;
-// }
-
-// double cSceneImitate::GetRootVelX(int agent_id) const
-// {
-// 	const cSimCharacter* sim_char = GetAgentChar(agent_id);
-// 	double vel = 0;
-// 	vel = GetRootVelX_pro(*sim_char);
-// 	return vel;
-// }
-
-// double cSceneImitate::GetRootPoseZ_pro(const cSimCharacter& sim_char) const
-// {
-// 	const Eigen::VectorXd& pose0 = sim_char.GetPose();
-// 	tVector root_pos0 = cKinTree::GetRootPos(pose0);
-// 	return root_pos0[1];
-// }
-
-// double cSceneImitate::GetRootVelX_pro(const cSimCharacter& sim_char) const
-// {
-// 	const Eigen::VectorXd& vel0 = sim_char.GetVel();
-// 	tVector root_vel0 = cKinTree::GetRootVel(vel0);
-// 	return root_vel0[0];
-// }
-
 cSceneImitate::cSceneImitate()
 {
 	mEnableRandRotReset = false;
@@ -245,6 +215,35 @@ cSceneImitate::eTerminate cSceneImitate::CheckTerminate(int agent_id) const
 		terminated = (end_motion) ? eTerminateFail : terminated;
 	}
 	return terminated;
+}
+
+double cSceneImitate::GetRootPoseZ(int agent_id) const
+{
+	const cSimCharacter* sim_char = GetAgentChar(agent_id);
+	double pos = GetRootPoseZ_pro(*sim_char);
+	return pos;
+}
+
+double cSceneImitate::GetRootVelX(int agent_id) const
+{
+	const cSimCharacter* sim_char = GetAgentChar(agent_id);
+	double vel = 0;
+	vel = GetRootVelX_pro(*sim_char);
+	return vel;
+}
+
+double cSceneImitate::GetRootPoseZ_pro(const cSimCharacter& sim_char) const
+{
+	const Eigen::VectorXd& pose0 = sim_char.GetPose();
+	tVector root_pos0 = cKinTree::GetRootPos(pose0);
+	return root_pos0[1];
+}
+
+double cSceneImitate::GetRootVelX_pro(const cSimCharacter& sim_char) const
+{
+	const Eigen::VectorXd& vel0 = sim_char.GetVel();
+	tVector root_vel0 = cKinTree::GetRootVel(vel0);
+	return root_vel0[0];
 }
 
 std::string cSceneImitate::GetName() const
