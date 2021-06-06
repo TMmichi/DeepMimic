@@ -72,7 +72,7 @@ class DeepMimicGymEnv:
         done = False
         need_new_action = False
         rew = 0
-        while (not need_new_action) and (not done):
+        while not need_new_action:
             self.update(self.timestep)
             need_new_action = self.need_new_action()
             if self.coreEnv.check_valid_episode():
@@ -86,9 +86,9 @@ class DeepMimicGymEnv:
         rew += self.get_custom_reward()
         if self.iter >= 500:
             done = True
-            self.vel_sum = 0
             if self.vel_sum / self.iter < 1.5:
                 rew += 1000
+                print("averaged velocity less than 1.5")
             else:
                 rew -= 500
         self.total_rew += rew
